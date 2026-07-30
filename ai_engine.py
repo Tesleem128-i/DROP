@@ -69,58 +69,137 @@ def _chat(system_prompt, user_prompt, json_mode=True, max_tokens=4000):
 
 # ---------------------------------------------------------------------------
 # Course generation
+#
+# NOTE: Course content is rich (thorough notes, worked examples, quizzes,
+# etc. per lesson), so generating an entire multi-week course in a single
+# completion easily blows past provider rate limits (e.g. Groq's on-demand
+# tier caps requests at 8000 tokens/minute — prompt + completion combined).
+# Instead we generate the course PLAN first (cheap), then generate each
+# WEEK separately (bounded size regardless of duration_weeks), then the
+# midterm/final exam last. This keeps every single call small and safe,
+# and means one failed week doesn't take down the whole course.
 # ---------------------------------------------------------------------------
-COURSE_SYSTEM_PROMPT = """You are DROP's AI curriculum architect. You design complete,
-rigorous, classroom-ready courses. Always respond with a single valid JSON object and
-nothing else, matching exactly this schema:
+
+PLAN_SYSTEM_PROMPT = """You are DROP's AI curriculum architect. Produce a high-level
+plan for a course — NOT full lesson content yet. Always respond with a single valid
+JSON object and nothing else, matching exactly this schema:
 
 {
-  "overview": "string, short course overview",
+  "overview": "string, short course overview (2-3 sentences)",
   "weeks": [
+    {"number": 1, "title": "string", "summary": "string, 1-2 sentences", "lesson_titles": ["string", ...]}
+  ]
+}
+
+Include 2-3 lesson_titles per week. Keep it concise — this is just an outline."""
+
+WEEK_SYSTEM_PROMPT = """You are DROP's AI curriculum architect, writing the full content
+for ONE week of a course, given the overall course plan for context. Always respond
+with a single valid JSON object and nothing else, matching exactly this schema:
+
+{
+  "lessons": [
     {
-      "number": 1,
       "title": "string",
-      "summary": "string",
-      "lessons": [
-        {
-          "title": "string",
-          "objectives": ["string", ...],
-          "notes": "markdown lecture notes, thorough, at least 4 paragraphs",
-          "definitions": ["Term: definition", ...],
-          "examples": "markdown, at least 2 worked examples",
-          "applications": "markdown, real life applications",
-          "common_mistakes": ["string", ...],
-          "practice": [{"question": "string", "answer": "string"}, ...],
-          "revision": "markdown revision summary",
-          "summary": "markdown short summary",
-          "homework": ["string", ...],
-          "quiz": [{"question": "string", "type": "mcq", "options": ["A","B","C","D"], "answer": "A"}]
-        }
-      ],
-      "weekly_test": {"questions": [{"question": "string", "type": "mcq|short_answer", "options": [], "answer": "string"}]}
+      "objectives": ["string", ...],
+      "notes": "markdown lecture notes, thorough, at least 4 paragraphs",
+      "definitions": ["Term: definition", ...],
+      "examples": "markdown, at least 2 worked examples",
+      "applications": "markdown, real life applications",
+      "common_mistakes": ["string", ...],
+      "practice": [{"question": "string", "answer": "string"}, ...],
+      "revision": "markdown revision summary",
+      "summary": "markdown short summary",
+      "homework": ["string", ...],
+      "quiz": [{"question": "string", "type": "mcq", "options": ["A","B","C","D"], "answer": "A"}]
     }
   ],
+  "weekly_test": {"questions": [{"question": "string", "type": "mcq|short_answer", "options": [], "answer": "string"}]}
+}
+
+Generate real, subject-accurate educational content, not placeholders. Write ONLY
+the lessons for the requested week — do not repeat other weeks."""
+
+EXAMS_SYSTEM_PROMPT = """You are DROP's AI curriculum architect, writing the midterm and
+final exam for a course, given its plan for context. Always respond with a single valid
+JSON object and nothing else, matching exactly this schema:
+
+{
   "midterm": {"questions": [{"question": "string", "type": "mcq|short_answer", "options": [], "answer": "string"}]},
   "final_exam": {"questions": [{"question": "string", "type": "mcq|short_answer|essay", "options": [], "answer": "string"}]}
 }
 
-Generate real, subject-accurate educational content, not placeholders."""
+Aim for 6-10 midterm questions and 8-12 final exam questions, covering the whole
+course plan. Generate real, subject-accurate content, not placeholders."""
 
 
 def generate_course(subject, duration_weeks, target_grade, syllabus_text=""):
-    user_prompt = (
-        f"Design a complete {duration_weeks}-week course.\n"
+    """Generate a complete course incrementally: plan -> each week -> exams.
+
+    Each API call is kept small and bounded regardless of duration_weeks, so we
+    don't hit provider TPM rate limits on longer courses. If the AI client isn't
+    configured at all, falls back to fully deterministic mock content. If an
+    individual week or the exams call fails partway through, that piece falls
+    back to mock content rather than failing the whole course.
+    """
+    if _client() is None:
+        return _mock_course(subject, duration_weeks, target_grade)
+
+    plan_prompt = (
+        f"Design a plan for a complete {duration_weeks}-week course.\n"
         f"Subject: {subject}\n"
         f"Target grade/level: {target_grade or 'general'}\n"
         f"Include 2-3 lessons per week.\n"
     )
     if syllabus_text:
-        user_prompt += f"\nBase it on this syllabus:\n{syllabus_text[:6000]}"
+        plan_prompt += f"\nBase it on this syllabus:\n{syllabus_text[:4000]}"
 
-    result = _chat(COURSE_SYSTEM_PROMPT, user_prompt, json_mode=True, max_tokens=8000)
-    if result is None:
+    plan = _chat(PLAN_SYSTEM_PROMPT, plan_prompt, json_mode=True, max_tokens=1500)
+    if plan is None or not plan.get("weeks"):
         return _mock_course(subject, duration_weeks, target_grade)
-    return result
+
+    plan_context = json.dumps({"overview": plan.get("overview", ""), "weeks": plan["weeks"]})
+
+    weeks = []
+    for week_plan in plan["weeks"]:
+        week_prompt = (
+            f"Course plan (for context):\n{plan_context[:3000]}\n\n"
+            f"Now write the full content for week {week_plan.get('number')}: "
+            f"\"{week_plan.get('title', '')}\" — {week_plan.get('summary', '')}\n"
+            f"Lessons to cover: {', '.join(week_plan.get('lesson_titles', [])) or '(use your judgment)'}"
+        )
+        try:
+            week_content = _chat(WEEK_SYSTEM_PROMPT, week_prompt, json_mode=True, max_tokens=3000)
+        except Exception:
+            week_content = None
+
+        if week_content is None or not week_content.get("lessons"):
+            mock_week = _mock_course(subject, 1, target_grade)["weeks"][0]
+            week_content = {"lessons": mock_week["lessons"], "weekly_test": mock_week["weekly_test"]}
+
+        weeks.append({
+            "number": week_plan.get("number"),
+            "title": week_plan.get("title", f"Week {week_plan.get('number')}"),
+            "summary": week_plan.get("summary", ""),
+            "lessons": week_content["lessons"],
+            "weekly_test": week_content.get("weekly_test", {"questions": []}),
+        })
+
+    exams_prompt = f"Course plan (for context):\n{plan_context[:3000]}"
+    try:
+        exams = _chat(EXAMS_SYSTEM_PROMPT, exams_prompt, json_mode=True, max_tokens=2000)
+    except Exception:
+        exams = None
+    if exams is None:
+        mock = _mock_course(subject, 1, target_grade)
+        exams = {"midterm": mock["midterm"], "final_exam": mock["final_exam"]}
+
+    return {
+        "overview": plan.get("overview", f"A {duration_weeks}-week course on {subject}."),
+        "weeks": weeks,
+        "midterm": exams.get("midterm", {"questions": []}),
+        "final_exam": exams.get("final_exam", {"questions": []}),
+    }
 
 
 def _mock_course(subject, duration_weeks, target_grade):
@@ -167,13 +246,7 @@ def _mock_course(subject, duration_weeks, target_grade):
 # Solo study course generation (from a topic or uploaded document text)
 # ---------------------------------------------------------------------------
 def generate_solo_course(topic, source_text=""):
-    prompt = f"Design a complete self-study course for a student on: {topic}\n"
-    if source_text:
-        prompt += f"Base it closely on this uploaded material:\n{source_text[:8000]}"
-    result = _chat(COURSE_SYSTEM_PROMPT, prompt, json_mode=True, max_tokens=8000)
-    if result is None:
-        return _mock_course(topic, 4, "self-study")
-    return result
+    return generate_course(topic, 4, "self-study", source_text)
 
 
 # ---------------------------------------------------------------------------
