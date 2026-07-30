@@ -21,6 +21,7 @@ from flask_login import (
     login_user, logout_user, login_required, current_user
 )
 from werkzeug.utils import secure_filename
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import Config
 from extensions import db, login_manager, bcrypt
@@ -32,6 +33,11 @@ import ai_engine as ai
 # ---------------------------------------------------------------------------
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Render (like most PaaS providers) puts the app behind a reverse proxy that
+# terminates TLS. Without this, Flask thinks every request is plain HTTP,
+# which breaks secure cookies and any https:// URL generation.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 db.init_app(app)
 login_manager.init_app(app)
@@ -1027,4 +1033,7 @@ def server_error(e):
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    # Local dev only. On Render, gunicorn imports `app` directly (see
+    # Procfile) and this block never runs.
+    debug_mode = os.environ.get("FLASK_DEBUG", "1") == "1"
+    app.run(debug=debug_mode, port=int(os.environ.get("PORT", 5000)))

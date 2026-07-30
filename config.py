@@ -20,6 +20,16 @@ def _sqlite_safe_uri(uri):
     return uri
 
 
+def _normalize_postgres_uri(uri):
+    """Render (and Heroku-style providers) hand out DATABASE_URL as
+    postgres://..., but SQLAlchemy 1.4+/2.x requires the postgresql://
+    scheme. Rewrite it so deployment doesn't crash on boot.
+    """
+    if uri.startswith("postgres://"):
+        return "postgresql://" + uri[len("postgres://"):]
+    return uri
+
+
 class Config:
     """Central configuration for the DROP platform."""
 
@@ -27,10 +37,10 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "drop-dev-secret-change-me")
 
     _default_db_path = os.path.join(BASE_DIR, "instance", "drop.db").replace("\\", "/")
-    SQLALCHEMY_DATABASE_URI = _sqlite_safe_uri(
-        os.environ.get("DATABASE_URL", f"sqlite:///{_default_db_path}")
-    )
+    _raw_db_uri = os.environ.get("DATABASE_URL", f"sqlite:///{_default_db_path}")
+    SQLALCHEMY_DATABASE_URI = _sqlite_safe_uri(_normalize_postgres_uri(_raw_db_uri))
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
 
     # --- Uploads ---
     UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
@@ -39,6 +49,13 @@ class Config:
 
     # --- Sessions ---
     PERMANENT_SESSION_LIFETIME = timedelta(days=14)
+    # Render terminates TLS at a proxy in front of the app, so cookies should
+    # be marked secure/http-only. IS_PRODUCTION is set via an env var on
+    # Render (see render deployment notes) and defaults off for local dev.
+    IS_PRODUCTION = os.environ.get("RENDER", "") != "" or os.environ.get("IS_PRODUCTION", "0") == "1"
+    SESSION_COOKIE_SECURE = IS_PRODUCTION
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
 
     # --- AI configuration (Groq, OpenAI-compatible endpoint) ---
     # DROP calls whatever OpenAI-compatible Chat Completions endpoint is
