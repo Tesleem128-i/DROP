@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}{{ study.topic }}{% endblock %}
+{% block page_title %}Study Alone{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('student_study_alone') }}" class="btn-drop-ghost" style="margin-bottom:16px; display:inline-flex;">← Back to Study Alone</a>
+
+<h2 style="margin:0 0 4px;">{{ study.topic }}</h2>
+
+{% if study.status == 'pending' %}
+<div class="card-drop" style="padding:40px; text-align:center;">
+  <div class="ai-avatar thinking" style="margin:0 auto 16px;"><span class="mono" style="font-size:12px;">AI</span></div>
+  <h4>Grok is designing your course…</h4>
+  <p class="text-muted-drop">Refresh in a moment.</p>
+</div>
+{% else %}
+{% set course = study.course() %}
+<p class="text-muted-drop" style="margin-bottom:20px;">{{ course.overview }}</p>
+
+{% for week in course.get('weeks', []) %}
+<div class="card-drop" style="margin-bottom:14px;">
+  <div class="card-body-drop">
+    <h5>Week {{ week.number }}: {{ week.title }}</h5>
+    <p class="text-muted-drop" style="font-size:13.5px; margin-bottom:14px;">{{ week.summary }}</p>
+    {% for lesson in week.get('lessons', []) %}
+    <details style="margin-bottom:10px; border:1px solid var(--border); border-radius:12px; padding:12px 14px;">
+      <summary style="cursor:pointer; font-weight:600; font-size:14px;">{{ lesson.title }}</summary>
+      <div style="margin-top:12px; font-size:13.5px;">
+        <p style="white-space:pre-wrap;">{{ lesson.notes }}</p>
+        <strong>Examples</strong>
+        <p style="white-space:pre-wrap;">{{ lesson.examples }}</p>
+        <strong>Homework</strong>
+        <ul>{% for h in lesson.get('homework', []) %}<li>{{ h }}</li>{% endfor %}</ul>
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+
+{% if course.get('final_exam') %}
+<div class="card-drop">
+  <div class="card-body-drop">
+    <h5 style="margin-top:0;">Final exam preview</h5>
+    <ul style="padding-left:18px;">
+      {% for q in course.final_exam.get('questions', [])[:3] %}<li style="font-size:13.5px;">{{ q.question }}</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

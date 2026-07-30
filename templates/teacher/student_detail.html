@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}{{ student.name }}{% endblock %}
+{% block page_title %}{{ student.name }}{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('teacher_classroom_students', classroom_id=classroom.id) }}" class="btn-drop-ghost" style="margin-bottom:16px; display:inline-flex;">← Back to students</a>
+
+<div style="display:grid; grid-template-columns:1fr 2fr; gap:22px;">
+  <div>
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop" style="text-align:center;">
+        <div class="ai-avatar mono" style="width:56px;height:56px;font-size:20px; margin:0 auto 12px;">{{ student.name[0]|upper }}</div>
+        <h4 style="margin:0 0 2px;">{{ student.name }}</h4>
+        <p class="text-muted-drop" style="font-size:13px;">{{ student.email }}</p>
+        <div style="display:flex; justify-content:center; gap:8px; margin-top:12px;">
+          <span class="pill {{ 'pill-red' if enrollment.risk_level=='high' else ('pill-amber' if enrollment.risk_level=='medium' else 'pill-teal') }}">{{ enrollment.risk_level }} risk</span>
+          <span class="pill pill-violet">Lvl {{ student.level }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-drop">
+      <div class="card-body-drop">
+        <div class="stat-label" style="margin-bottom:4px;">Progress</div>
+        <div class="progress-track" style="margin-bottom:6px;"><div class="progress-fill" style="width:{{ enrollment.progress_percent }}%;"></div></div>
+        <div class="mono" style="font-size:13px; margin-bottom:16px;">{{ enrollment.progress_percent }}% complete</div>
+
+        <div class="stat-label">Average score</div>
+        <div class="stat-value">{{ avg_score if avg_score is not none else '—' }}</div>
+
+        <hr class="divider">
+        <div class="stat-label">Predicted grade</div>
+        <div class="stat-value" style="font-size:20px;">{{ enrollment.predicted_grade or 'Not enough data' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    {% if profile %}
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h4 style="margin-top:0;">AI learning profile</h4>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+          <div>
+            <div class="stat-label">Learning speed</div>
+            <div style="font-weight:600;">{{ profile.learning_speed|capitalize }}</div>
+          </div>
+          <div>
+            <div class="stat-label">Attention span</div>
+            <div style="font-weight:600;">{{ profile.attention_span|capitalize }}</div>
+          </div>
+          <div>
+            <div class="stat-label">Preferred difficulty</div>
+            <div style="font-weight:600;">{{ profile.preferred_difficulty|capitalize }}</div>
+          </div>
+          <div>
+            <div class="stat-label">Confidence</div>
+            <div style="font-weight:600;">{{ profile.confidence }}/100</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:20px; flex-wrap:wrap;">
+          <div>
+            <div class="stat-label" style="margin-bottom:6px;">Strong topics</div>
+            {% for t in profile.strong_topics() %}<span class="pill pill-teal" style="margin:2px;">{{ t }}</span>{% else %}<span class="text-muted-drop" style="font-size:13px;">Not enough data yet</span>{% endfor %}
+          </div>
+          <div>
+            <div class="stat-label" style="margin-bottom:6px;">Weak topics</div>
+            {% for t in profile.weak_topics() %}<span class="pill pill-red" style="margin:2px;">{{ t }}</span>{% else %}<span class="text-muted-drop" style="font-size:13px;">Not enough data yet</span>{% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card-drop">
+      <div class="card-body-drop">
+        <h4 style="margin-top:0;">Recent submissions</h4>
+        {% if submissions %}
+        <table class="table-drop">
+          <thead><tr><th>Assignment</th><th>Score</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody>
+          {% for s in submissions %}
+          <tr>
+            <td>{{ s.assignment.title }}</td>
+            <td>{{ s.score if s.score is not none else '—' }}</td>
+            <td><span class="pill {{ 'pill-teal' if s.status=='graded' else 'pill-amber' }}">{{ s.status }}</span></td>
+            <td class="text-muted-drop">{{ s.submitted_at.strftime('%b %d') }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted-drop" style="font-size:13.5px;">No submissions yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

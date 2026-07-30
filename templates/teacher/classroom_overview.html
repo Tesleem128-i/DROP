@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% import "teacher/_tabs.html" as tabs %}
+{% block title %}{{ classroom.name }}{% endblock %}
+{% block page_title %}{{ classroom.name }}{% endblock %}
+{% block content %}
+
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; flex-wrap:wrap; gap:12px;">
+  <div>
+    <h2 style="margin:0 0 4px;">{{ classroom.name }}</h2>
+    <p class="text-muted-drop" style="margin:0;">{{ classroom.subject }} · {{ classroom.duration_weeks }} weeks · {{ classroom.target_grade or 'General level' }}</p>
+  </div>
+  <div style="text-align:right;">
+    <div class="form-hint" style="margin-bottom:4px;">Join code — share with students</div>
+    <span class="join-code-badge" data-copy="{{ classroom.join_code }}" title="Click to copy">{{ classroom.join_code }}</span>
+  </div>
+</div>
+
+{{ tabs.classroom_tabs(classroom, 'overview') }}
+
+{% if classroom.ai_status == 'pending' %}
+<div class="card-drop" style="padding:40px; text-align:center;">
+  <div class="ai-avatar thinking" style="margin:0 auto 16px;"><span class="mono" style="font-size:12px;">AI</span></div>
+  <h4>Grok is generating your course…</h4>
+  <p class="text-muted-drop">Refresh this page in a moment.</p>
+</div>
+{% else %}
+
+<div style="display:grid; grid-template-columns:2fr 1fr; gap:22px;">
+  <div>
+    <h4 style="margin-bottom:14px;">Curriculum</h4>
+    {% for week in classroom.weeks %}
+    <div class="card-drop" style="margin-bottom:14px;">
+      <div class="card-body-drop">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <h5 style="margin:0;">Week {{ week.number }}: {{ week.title }}</h5>
+          <span class="pill pill-muted">{{ week.lessons|length }} lessons</span>
+        </div>
+        <p class="text-muted-drop" style="font-size:13.5px; margin-bottom:12px;">{{ week.summary }}</p>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          {% for lesson in week.lessons %}
+          <span class="pill pill-violet">{{ lesson.title }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="card-drop empty-state"><p>No weeks generated yet.</p></div>
+    {% endfor %}
+  </div>
+
+  <div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h4 style="margin:0;">Assessments</h4>
+      <a href="{{ url_for('teacher_assignment_create', classroom_id=classroom.id) }}" class="btn-drop-ghost">{{ ic.icon('plus', 14) }} New</a>
+    </div>
+    {% for a in classroom.assignments %}
+    <a href="{{ url_for('teacher_assignment_submissions', assignment_id=a.id) }}" class="card-drop hoverable" style="display:block; padding:14px 16px; margin-bottom:10px; text-decoration:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-weight:600; font-size:14px; color:var(--ink);">{{ a.title }}</div>
+          <div style="font-size:12px; color:var(--muted);">{{ a.kind.replace('_',' ')|capitalize }} · {{ a.submissions|length }} submitted</div>
+        </div>
+        <span class="pill pill-muted">{{ ic.icon('arrow-right', 12) }}</span>
+      </div>
+    </a>
+    {% else %}
+    <div class="card-drop empty-state" style="padding:30px;"><p style="font-size:13px;">No assessments yet.</p></div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

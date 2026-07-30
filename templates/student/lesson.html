@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}{{ lesson.title }}{% endblock %}
+{% block page_title %}{{ classroom.name }}{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('student_classroom', classroom_id=classroom.id) }}" class="btn-drop-ghost" style="margin-bottom:16px; display:inline-flex;">← Back to classroom</a>
+
+<div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+  <div class="ai-avatar"><span class="mono" style="font-size:12px;">AI</span></div>
+  <div>
+    <h2 style="margin:0;">{{ lesson.title }}</h2>
+    {% if progress.completed %}<span class="pill pill-teal">{{ ic.icon('check', 12) }} Completed · {{ progress.quiz_score }}%</span>{% endif %}
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns:2fr 1fr; gap:22px;">
+  <div>
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Learning objectives</h5>
+        <ul style="padding-left:18px;">
+          {% for o in lesson.get_json('objectives') %}<li>{{ o }}</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Lecture notes</h5>
+        <p style="white-space:pre-wrap; font-size:14.5px; line-height:1.75;">{{ lesson.notes }}</p>
+      </div>
+    </div>
+
+    {% if lesson.get_json('definitions') %}
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Key definitions</h5>
+        {% for d in lesson.get_json('definitions') %}
+        <div class="pill pill-violet" style="display:block; margin-bottom:8px; white-space:normal; text-align:left;">{{ d }}</div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Examples</h5>
+        <p style="white-space:pre-wrap; font-size:14.5px;">{{ lesson.examples }}</p>
+      </div>
+    </div>
+
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Real-life applications</h5>
+        <p style="white-space:pre-wrap; font-size:14.5px;">{{ lesson.applications }}</p>
+      </div>
+    </div>
+
+    {% if lesson.get_json('common_mistakes') %}
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Common mistakes</h5>
+        <ul style="padding-left:18px;">
+          {% for cm in lesson.get_json('common_mistakes') %}<li style="color:var(--red);">{{ cm }}</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if lesson.get_json('practice') %}
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Practice</h5>
+        {% for p in lesson.get_json('practice') %}
+        <details style="margin-bottom:10px;">
+          <summary style="cursor:pointer; font-size:14px;">{{ p.question }}</summary>
+          <p class="text-muted-drop" style="font-size:13.5px; margin-top:8px;">{{ p.answer }}</p>
+        </details>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Revision</h5>
+        <p style="white-space:pre-wrap; font-size:14.5px;">{{ lesson.revision }}</p>
+      </div>
+    </div>
+
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Summary</h5>
+        <p style="white-space:pre-wrap; font-size:14.5px;">{{ lesson.summary }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    {% if lesson.get_json('homework') %}
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5 style="margin-top:0;">Homework</h5>
+        <ul style="padding-left:18px; margin:0;">
+          {% for h in lesson.get_json('homework') %}<li style="font-size:13.5px;">{{ h }}</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card-drop">
+      <div class="card-body-drop">
+        <h5 style="margin-top:0;">Mini quiz</h5>
+        {% if progress.completed %}
+        <p class="pill pill-teal" style="display:inline-block;">Completed · {{ progress.quiz_score }}%</p>
+        {% else %}
+        <form method="POST" action="{{ url_for('student_lesson_quiz_submit', classroom_id=classroom.id, lesson_id=lesson.id) }}">
+          {% for q in lesson.get_json('quiz_json') %}
+          <div style="margin-bottom:16px;">
+            <div style="font-size:13.5px; font-weight:600; margin-bottom:8px;">{{ loop.index }}. {{ q.question }}</div>
+            {% for opt in q.options %}
+            <label style="display:flex; align-items:center; gap:8px; font-size:13.5px; margin-bottom:6px;">
+              <input type="radio" name="q{{ loop.index0 }}" value="{{ opt }}" style="accent-color:var(--violet);" required>
+              {{ opt }}
+            </label>
+            {% endfor %}
+          </div>
+          {% endfor %}
+          <button class="btn-drop-primary" type="submit" style="width:100%; justify-content:center;">Submit quiz</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}Assignments{% endblock %}
+{% block page_title %}Assignments{% endblock %}
+{% block content %}
+
+<div class="card-drop">
+  {% if assignments %}
+  <table class="table-drop">
+    <thead><tr><th>Title</th><th>Type</th><th>Due</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for a in assignments %}
+    <tr>
+      <td>{{ a.title }}</td>
+      <td class="text-muted-drop">{{ a.kind.replace('_',' ')|capitalize }}</td>
+      <td class="text-muted-drop">{{ a.due_date.strftime('%b %d') if a.due_date else '—' }}</td>
+      <td>
+        {% set sub = my_subs.get(a.id) %}
+        {% if sub and sub.status == 'graded' %}<span class="pill pill-teal">Graded · {{ sub.score }}%</span>
+        {% elif sub %}<span class="pill pill-amber">Submitted</span>
+        {% else %}<span class="pill pill-muted">Not started</span>{% endif %}
+      </td>
+      <td><a href="{{ url_for('student_assignment_detail', assignment_id=a.id) }}" class="btn-drop-ghost">Open {{ ic.icon('arrow-right', 12) }}</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">{{ ic.icon('clipboard', 44) }}<p>No assignments yet.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

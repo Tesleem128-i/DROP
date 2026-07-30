@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% import "teacher/_tabs.html" as tabs %}
+{% block title %}Analytics · {{ classroom.name }}{% endblock %}
+{% block page_title %}{{ classroom.name }}{% endblock %}
+{% block content %}
+
+{{ tabs.classroom_tabs(classroom, 'analytics') }}
+
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin-bottom:22px;">
+  <div class="card-drop stat-card">
+    <div class="stat-value">{{ avg_score }}%</div>
+    <div class="stat-label">Average score</div>
+  </div>
+  <div class="card-drop stat-card">
+    <div class="stat-value">{{ completion_rate }}%</div>
+    <div class="stat-label">Completion rate</div>
+  </div>
+  <div class="card-drop stat-card">
+    <div class="stat-value">{{ classroom.student_count() }}</div>
+    <div class="stat-label">Students</div>
+  </div>
+  <div class="card-drop stat-card">
+    <div class="stat-value">{{ classroom.assignments|length }}</div>
+    <div class="stat-label">Assessments</div>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:22px;">
+  <div class="card-drop">
+    <div class="card-body-drop">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+        <div class="ai-avatar" style="width:28px;height:28px;"><span class="mono" style="font-size:10px;">AI</span></div>
+        <h4 style="margin:0;">Grok insights</h4>
+      </div>
+      <ul style="padding-left:18px; margin:0;">
+        {% for insight in insights %}
+        <li style="margin-bottom:10px; font-size:14px;">{{ insight }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class="card-drop">
+    <div class="card-body-drop">
+      <h4 style="margin-top:0; margin-bottom:14px;">Student ranking</h4>
+      {% for e in ranking %}
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border);">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="mono" style="color:var(--muted); width:20px;">{{ loop.index }}</span>
+          {{ e.student.name }}
+        </div>
+        <span class="mono" style="font-weight:600;">{{ e.progress_percent }}%</span>
+      </div>
+      {% else %}
+      <p class="text-muted-drop" style="font-size:13.5px;">No students yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

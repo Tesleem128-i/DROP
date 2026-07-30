@@ -1,0 +1,11 @@
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-Bcrypt==1.0.1
+Flask-WTF==1.2.1
+WTForms==3.1.2
+python-dotenv==1.0.1
+openai==1.51.0
+PyPDF2==3.0.1
+python-docx==1.1.2
+Werkzeug==3.0.4

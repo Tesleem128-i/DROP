@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}Progress{% endblock %}
+{% block page_title %}Progress{% endblock %}
+{% block content %}
+
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:14px; margin-bottom:26px;">
+  <div class="card-drop stat-card">
+    <div class="stat-value">{{ current_user.xp }}</div>
+    <div class="stat-label">Total XP</div>
+  </div>
+  <div class="card-drop stat-card">
+    <div class="stat-value">{{ current_user.level }}</div>
+    <div class="stat-label">Level</div>
+  </div>
+  <div class="card-drop stat-card">
+    <div class="stat-value">{{ submissions|selectattr('status','equalto','graded')|list|length }}</div>
+    <div class="stat-label">Graded work</div>
+  </div>
+  <div class="card-drop stat-card">
+    <div class="stat-value">{{ current_user.streak_days }}</div>
+    <div class="stat-label">Day streak</div>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:22px;">
+  <div>
+    <h4 style="margin-bottom:14px;">Classroom progress</h4>
+    <div class="card-drop">
+      {% for e in enrollments %}
+      <div style="padding:14px 18px; border-bottom:1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+          <span style="font-size:13.5px; font-weight:600;">{{ e.classroom.name }}</span>
+          <span class="mono">{{ e.progress_percent }}%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:{{ e.progress_percent }}%;"></div></div>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:30px;"><p style="font-size:13px;">Join a classroom to track progress.</p></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div>
+    <h4 style="margin-bottom:14px;">Score history</h4>
+    <div class="card-drop">
+      {% for s in submissions[-8:]|reverse %}
+      <div style="display:flex; justify-content:space-between; padding:12px 18px; border-bottom:1px solid var(--border); font-size:13.5px;">
+        <span>{{ s.assignment.title }}</span>
+        <span class="pill {{ 'pill-teal' if s.status=='graded' else 'pill-amber' }}">{{ s.score if s.score is not none else '—' }}{{ '%' if s.score is not none }}</span>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:30px;"><p style="font-size:13px;">No graded work yet.</p></div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}Tests &amp; Exams{% endblock %}
+{% block page_title %}Tests &amp; Exams{% endblock %}
+{% block content %}
+
+<div class="card-drop">
+  {% if tests %}
+  <table class="table-drop">
+    <thead><tr><th>Title</th><th>Type</th><th>Due</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for t in tests %}
+    <tr>
+      <td>{{ t.title }}</td>
+      <td class="text-muted-drop">{{ t.kind.replace('_',' ')|capitalize }}</td>
+      <td class="text-muted-drop">{{ t.due_date.strftime('%b %d') if t.due_date else '—' }}</td>
+      <td>
+        {% set sub = my_subs.get(t.id) %}
+        {% if sub and sub.status == 'graded' %}<span class="pill pill-teal">Graded · {{ sub.score }}%</span>
+        {% elif sub %}<span class="pill pill-amber">Submitted</span>
+        {% else %}<span class="pill pill-muted">Not started</span>{% endif %}
+      </td>
+      <td><a href="{{ url_for('student_assignment_detail', assignment_id=t.id) }}" class="btn-drop-ghost">Open {{ ic.icon('arrow-right', 12) }}</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">{{ ic.icon('target', 44) }}<p>No tests or exams scheduled yet.</p></div>
+  {% endif %}
+</div>
+{% endblock %}
