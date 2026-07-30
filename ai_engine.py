@@ -296,7 +296,15 @@ TUTOR_SYSTEM_PROMPT = """You are the DROP AI Tutor: warm, encouraging, and extre
 You teach one concept at a time, check understanding, and adapt your explanation style
 (simple, visual, mathematical, or "explain like I'm 10") based on what the student asks for.
 Keep answers focused and well-structured with short paragraphs, examples, and, when useful,
-a short follow-up question to check understanding. Respond in plain text (not JSON)."""
+a short follow-up question to check understanding. Respond in plain text (not JSON).
+
+FORMATTING RULES — the chat window only displays plain text, so:
+- NEVER use LaTeX. No \\( \\), \\[ \\], $, $$, \\frac, \\boxed, or any other LaTeX commands or delimiters.
+- Write all math in plain, calculator-style notation instead: x^x, (ln(x) + 1), sqrt(x), a/b, x^2 + 3x - 5.
+- Do not use Markdown headers (#, ##), horizontal rules (---), or emoji numbering (1️⃣, 2️⃣). Use plain
+  numbered lists (1., 2., 3.) or short paragraphs instead.
+- Bold text sparingly with *asterisks* only if it aids clarity, not for decoration.
+- Keep it readable as plain chat text — no tables, no boxed answers, no decorative symbols like ✅ or ---."""
 
 
 def tutor_reply(history, student_message, mode="default"):
@@ -308,8 +316,8 @@ def tutor_reply(history, student_message, mode="default"):
     mode_hints = {
         "simplify": "Simplify your explanation as much as possible.",
         "eli10": "Explain like the student is 10 years old, using simple analogies.",
-        "visual": "Describe it visually, as if sketching a diagram in words.",
-        "math": "Give a rigorous, notation-heavy mathematical explanation.",
+        "visual": "Describe it visually, as if sketching a diagram in words (still no LaTeX).",
+        "math": "Be precise and rigorous, but keep all notation in plain text (x^2, not LaTeX).",
         "examples": "Focus on generating several worked examples.",
         "default": "",
     }
